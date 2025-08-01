@@ -1,3 +1,4 @@
+// File: components/Header.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -13,12 +14,12 @@ const Header = () => {
         <span className="font-bold text-lg text-gray-900">QuizMaster</span>
       </div>
       <nav className="hidden md:flex items-center space-x-8 text-gray-600 text-sm">
-        <Link to="/" className="hover:text-purple-600 transition-colors">QuizMaster</Link>
-        <Link to="#" className="hover:text-purple-600 transition-colors">About</Link>
-        <Link to="#" className="hover:text-purple-600 transition-colors">Create</Link>
+        <Link to="/" className="hover:text-purple-600 transition-colors">Home</Link>
+        {/* The 'Quizzes' link now points to the /quizzes route */}
+        <Link to="/quizzes" className="hover:text-purple-600 transition-colors">Quizzes</Link>
+        <Link to="/create-quiz" className="hover:text-purple-600 transition-colors">Create</Link>
       </nav>
       <div className="flex items-center space-x-4">
-        {/* Both login and signup buttons now correctly link to the /auth route */}
         <Link to="/auth" className="text-gray-600 text-sm hidden md:block">Login</Link>
         <Link to="/auth" className="bg-purple-600 hover:bg-purple-700 transition-colors text-white py-2 px-4 rounded-full text-sm font-semibold shadow-md">Sign up</Link>
       </div>
