@@ -30,7 +30,7 @@ const QuizSelectionPage = () => {
   return (
     <div className="font-inter antialiased text-gray-800 bg-gray-50 min-h-screen">
       <Header />
-      <main className="container mx-auto px-4 md:px-8 py-8 md:py-16">
+      <main className="container mx-auto px-4 md:px-8 py-8 md:py-20">
         <FeaturedQuizzesSection />
         <hr className="my-12 border-gray-200" />
         <div className="grid lg:grid-cols-4 gap-8">

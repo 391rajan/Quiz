@@ -1,6 +1,9 @@
+// File: pages/AuthPage.jsx
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import AuthLayout from '../AuthLayout';
+import { useAuth } from '../context/AuthContext';
 
 // A reusable input component for cleaner code
 const InputField = ({ id, type, placeholder, value, onChange, label, icon }) => (
@@ -26,7 +29,11 @@ const InputField = ({ id, type, placeholder, value, onChange, label, icon }) => 
 );
 
 const AuthPage = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [isLoginView, setIsLoginView] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // State for login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -37,16 +44,51 @@ const AuthPage = () => {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // TODO: Implement login logic with backend API
-    console.log('Logging in with:', { email: loginEmail, password: loginPassword });
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data } = await axios.post('http://localhost:5000/api/auth/login', {
+        email: loginEmail,
+        password: loginPassword,
+      });
+      console.log('Login successful:', data);
+      
+      // Call login from context, passing the user object and token
+      login({ username: data.username, token: data.token });
+      navigate('/quizzes'); 
+    } catch (err) {
+      console.error('Login failed:', err.response.data.message);
+      setError(err.response.data.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
-    // TODO: Implement signup logic with backend API
-    console.log('Signing up with:', { username: signupUsername, email: signupEmail, password: signupPassword });
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const { data } = await axios.post('http://localhost:5000/api/auth/register', {
+        username: signupUsername,
+        email: signupEmail,
+        password: signupPassword,
+      });
+      console.log('Signup successful:', data);
+      
+      // Call login from context, passing the user object and token
+      login({ username: data.username, token: data.token });
+      navigate('/quizzes'); 
+    } catch (err) {
+      console.error('Signup failed:', err.response.data.message);
+      setError(err.response.data.message || 'Signup failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -102,6 +144,12 @@ const AuthPage = () => {
       </div>
 
       {/* Conditional Form Rendering */}
+      {error && (
+        <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm text-center mb-4">
+          {error}
+        </div>
+      )}
+
       {isLoginView ? (
         // Login Form
         <form onSubmit={handleLogin} className="space-y-4">
@@ -145,8 +193,9 @@ const AuthPage = () => {
           <button
             type="submit"
             className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+            disabled={loading}
           >
-            Sign In
+            {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
       ) : (
@@ -182,8 +231,9 @@ const AuthPage = () => {
           <button
             type="submit"
             className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+            disabled={loading}
           >
-            Create an account
+            {loading ? 'Creating Account...' : 'Create an account'}
           </button>
         </form>
       )}
