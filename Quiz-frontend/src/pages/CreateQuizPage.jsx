@@ -1,8 +1,17 @@
 // File: pages/CreateQuizPage.jsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { Link } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+
+// A placeholder component for a loading spinner
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center h-screen">
+    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-600"></div>
+  </div>
+);
 
 // Component for a single Multiple Choice Question form
 const MultipleChoiceQuestionForm = ({ question, index, onQuestionChange }) => {
@@ -67,57 +76,59 @@ const MultipleChoiceQuestionForm = ({ question, index, onQuestionChange }) => {
 
 
 const CreateQuizPage = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   const [quizDetails, setQuizDetails] = useState({
     title: '',
     category: '',
     description: '',
     difficulty: 'medium',
-    coverImage: null,
+    numQuestions: 5, // New state for number of questions
   });
 
-  const [questions, setQuestions] = useState([]);
-  const [currentQuestionType, setCurrentQuestionType] = useState('mcq');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setQuizDetails(prev => ({ ...prev, [name]: value }));
   };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setQuizDetails(prev => ({ ...prev, coverImage: file }));
-    }
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      setQuizDetails(prev => ({ ...prev, coverImage: file }));
-    }
-  };
-
-  const handleAddQuestion = () => {
-    const newQuestion = { type: currentQuestionType, text: '', options: ['', '', '', ''], correctAnswer: '' };
-    setQuestions(prev => [...prev, newQuestion]);
-  };
-
-  const handleQuestionChange = (index, newQuestion) => {
-    const newQuestions = [...questions];
-    newQuestions[index] = newQuestion;
-    setQuestions(newQuestions);
-  };
   
-  const handleSaveQuiz = (e) => {
-      e.preventDefault();
-      // TODO: Implement logic to save the quiz to the backend
-      console.log('Saving quiz:', quizDetails);
-      console.log('Questions:', questions);
+  const handleGenerateQuiz = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const token = localStorage.getItem('token');
+
+    if (!user || !token) {
+        setError("You must be logged in to create a quiz.");
+        setLoading(false);
+        return;
+    }
+    
+    try {
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
+      const { data } = await axios.post('http://localhost:5000/api/quizzes/generate', {
+        topic: quizDetails.title,
+        difficulty: quizDetails.difficulty,
+        numQuestions: quizDetails.numQuestions, // Send numQuestions to backend
+      }, config);
+
+      console.log('Quiz generated successfully:', data);
+      navigate(`/quiz/${data._id}`); // Navigate to the new quiz page
+    } catch (err) {
+      console.error('Quiz generation failed:', err.response?.data?.message || err.message);
+      setError(err.response?.data?.message || 'Failed to generate quiz.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -126,10 +137,17 @@ const CreateQuizPage = () => {
       <main className="container mx-auto px-4 md:px-8 py-20">
         <h2 className="text-3xl font-bold mb-2 text-center text-gray-900">Create Your Own Quiz</h2>
         <p className="max-w-2xl mx-auto text-gray-600 text-center">
-          Design engaging quizzes with multiple question types and customized options.
+          Tell our AI what you want to learn, and we'll generate a custom quiz for you.
         </p>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSaveQuiz}>
+        {loading && <LoadingSpinner />}
+        {error && (
+            <div className="bg-red-100 text-red-700 p-4 rounded-lg mt-4 text-sm text-center max-w-xl mx-auto">
+                {error}
+            </div>
+        )}
+
+        <form className="mt-8 space-y-6" onSubmit={handleGenerateQuiz}>
           {/* Quiz Details Section */}
           <section className="bg-white p-8 rounded-lg shadow-md">
             <h3 className="text-xl font-bold mb-4 text-gray-900">Quiz Details</h3>
@@ -137,48 +155,17 @@ const CreateQuizPage = () => {
             <div className="grid md:grid-cols-2 gap-6">
               {/* Quiz Title */}
               <div>
-                <label htmlFor="quizTitle" className="block text-sm font-medium text-gray-700">Quiz Title</label>
+                <label htmlFor="quizTitle" className="block text-sm font-medium text-gray-700">Quiz Topic</label>
                 <input
                   type="text"
                   id="quizTitle"
                   name="title"
                   value={quizDetails.title}
                   onChange={handleInputChange}
-                  placeholder="e.g., 'Quiz on MERN Stack'"
+                  placeholder="e.g., 'React Hooks'"
                   className="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 />
-              </div>
-              {/* Category */}
-              <div>
-                <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>
-                <select
-                  id="category"
-                  name="category"
-                  value={quizDetails.category}
-                  onChange={handleInputChange}
-                  className="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  required
-                >
-                  <option value="">Select Category</option>
-                  <option value="technology">Technology</option>
-                  <option value="science">Science</option>
-                  <option value="history">History</option>
-                  {/* Add more categories here */}
-                </select>
-              </div>
-              {/* Description */}
-              <div className="md:col-span-2">
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={quizDetails.description}
-                  onChange={handleInputChange}
-                  placeholder="Provide a brief overview of what this quiz covers..."
-                  className="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 h-24"
-                  required
-                ></textarea>
               </div>
               {/* Difficulty */}
               <div>
@@ -195,123 +182,32 @@ const CreateQuizPage = () => {
                   <option value="hard">Hard</option>
                 </select>
               </div>
-              {/* Cover Image */}
+              {/* Number of Questions */}
               <div>
-                <label htmlFor="coverImage" className="block text-sm font-medium text-gray-700">Cover Image (Optional)</label>
-                <div
-                  className="mt-1 flex justify-center items-center h-24 border-2 border-gray-300 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-indigo-500 transition-colors"
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                >
-                  <input 
-                    type="file" 
-                    id="coverImage"
-                    name="coverImage"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/*"
-                  />
-                  <p className="text-sm text-gray-500">
-                    {quizDetails.coverImage ? quizDetails.coverImage.name : 'Click to upload an image or drag & drop'}
-                  </p>
-                </div>
+                <label htmlFor="numQuestions" className="block text-sm font-medium text-gray-700">Number of Questions</label>
+                <input
+                  type="number"
+                  id="numQuestions"
+                  name="numQuestions"
+                  value={quizDetails.numQuestions}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 10"
+                  min="1"
+                  className="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                  required
+                />
               </div>
-            </div>
-          </section>
-
-          {/* Questions Section */}
-          <section className="bg-white p-8 rounded-lg shadow-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Questions ({questions.length})</h3>
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrentQuestionType('mcq')}
-                  className={`flex items-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                    currentQuestionType === 'mcq'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  <span className="mr-2">🔘</span> Multiple Choice
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentQuestionType('true_false')}
-                  className={`flex items-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                    currentQuestionType === 'true_false'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  <span className="mr-2">✅</span> True/False
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentQuestionType('fill_in_the_blank')}
-                  className={`flex items-center px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                    currentQuestionType === 'fill_in_the_blank'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  <span className="mr-2">📝</span> Fill-in-the-Blank
-                </button>
-              </div>
-            </div>
-
-            {/* Question list or placeholder */}
-            <div className="mt-4 p-8 bg-gray-100 rounded-lg border border-gray-200">
-              {questions.length === 0 ? (
-                <p className="text-center text-gray-500 italic">
-                  Start by adding your first question above!
-                </p>
-              ) : (
-                <div>
-                  {questions.map((q, index) => {
-                    switch (q.type) {
-                      case 'mcq':
-                        return (
-                          <MultipleChoiceQuestionForm 
-                            key={index}
-                            question={q}
-                            index={index}
-                            onQuestionChange={handleQuestionChange}
-                          />
-                        );
-                      default:
-                        return null;
-                    }
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end space-x-4 mt-6">
-              <button
-                type="button"
-                onClick={handleAddQuestion}
-                className="flex items-center text-indigo-600 font-semibold text-sm hover:text-indigo-800 transition-colors"
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                Add Question
-              </button>
             </div>
           </section>
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-4 mt-6">
             <button
-              type="button"
-              className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-full hover:bg-gray-100 transition-colors"
-            >
-              Preview Quiz
-            </button>
-            <button
               type="submit"
               className="px-6 py-3 bg-purple-600 text-white font-semibold rounded-full hover:bg-purple-700 transition-colors"
+              disabled={loading}
             >
-              Save Quiz
+              {loading ? 'Generating Quiz...' : 'Generate Quiz'}
             </button>
           </div>
         </form>

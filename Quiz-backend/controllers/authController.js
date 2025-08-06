@@ -6,16 +6,9 @@ const jwt = require('jsonwebtoken');
 // A helper function to generate a JSON Web Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '1h',
+    expiresIn: '8h',
   });
 };
-const getProfile = async (req, res) => {
-  // The 'protect' middleware adds the user object to the request
-  const user = await User.findById(req.user._id).select('-password');
-  res.json({ username: user.username });
-};
-
-module.exports = { registerUser, loginUser, getProfile };
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -80,4 +73,14 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser };
+// @desc    Get user profile
+// @route   GET /api/auth/profile
+// @access  Private
+const getProfile = async (req, res) => {
+  // The 'protect' middleware adds the user object to the request
+  const user = await User.findById(req.user._id).select('-password');
+  res.json({ username: user.username });
+};
+
+// Export all the functions at once
+module.exports = { registerUser, loginUser, getProfile };

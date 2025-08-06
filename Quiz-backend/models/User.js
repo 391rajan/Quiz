@@ -19,10 +19,11 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    // This array stores references to QuizAttempt documents
     quizHistory: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'QuizAttempt',
+        ref: 'QuizAttempt', // Refers to the QuizAttempt model
       },
     ],
   },
@@ -31,7 +32,7 @@ const userSchema = mongoose.Schema(
   }
 );
 
-// This pre-save hook hashes the password before a user is saved to the database.
+// Pre-save hook for password hashing (already implemented)
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     next();
@@ -40,7 +41,7 @@ userSchema.pre('save', async function (next) {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// This method will be used to compare a user's entered password with the hashed password in the database.
+// Method to compare passwords (already implemented)
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
