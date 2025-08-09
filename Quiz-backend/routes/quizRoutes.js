@@ -5,8 +5,8 @@ const { generateQuiz, getQuizById, submitQuiz } = require('../controllers/quizCo
 const { protect } = require('../middleware/authMiddleware');
 const router = express.Router();
 
-router.post('/generate', protect, generateQuiz);
-router.get('/:id', protect, getQuizById); // New route to get a single quiz
-router.post('/submit', protect, submitQuiz); // New route to submit answers
+router.post('/generate', protect, generateQuiz); 
+router.get('/:id', protect, getQuizById); 
+router.post('/submit', protect, submitQuiz); 
 
 module.exports = router;

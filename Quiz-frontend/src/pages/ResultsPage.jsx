@@ -59,6 +59,7 @@ const ResultsPage = () => {
   const scorePercentage = (results.score / results.totalQuestions) * 100;
   const incorrectQuestions = results.questions.filter(q => !q.isCorrect);
   const weakTopics = analytics.weakTopics;
+  const strongTopics = analytics.strongTopics;
 
   return (
     <div className="font-inter antialiased text-gray-800 bg-gray-50 min-h-screen">
@@ -113,8 +114,8 @@ const ResultsPage = () => {
           </div>
 
           {weakTopics.length > 0 && (
-            <div className="mt-12 p-6 bg-yellow-50 rounded-lg border border-yellow-200">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Weak Topics Identified</h3>
+            <div className="mt-12 p-6 bg-red-50 rounded-lg border border-red-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Weak Topics Identified 🚨</h3>
               <ul className="list-disc list-inside space-y-1">
                 {weakTopics.map((topic, index) => (
                   <li key={index} className="text-gray-700">
@@ -123,7 +124,23 @@ const ResultsPage = () => {
                 ))}
               </ul>
               <p className="mt-4 text-sm text-gray-600">
-                **Suggestion:** Generate more quizzes on these topics to improve your skills!
+                **Suggestion:** Generate more quizzes on these topics to strengthen your knowledge!
+              </p>
+            </div>
+          )}
+
+          {strongTopics.length > 0 && (
+            <div className="mt-12 p-6 bg-green-50 rounded-lg border border-green-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Strong Topics 💪</h3>
+              <ul className="list-disc list-inside space-y-1">
+                {strongTopics.map((topic, index) => (
+                  <li key={index} className="text-gray-700">
+                    <span className="font-semibold">{topic.topic}:</span> {topic.message}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 text-sm text-gray-600">
+                **Keep it up!** Continue practicing to maintain your expertise.
               </p>
             </div>
           )}

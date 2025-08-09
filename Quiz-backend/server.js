@@ -20,7 +20,7 @@ app.use(express.json());
 // Mount the authentication routes
 app.use('/api/auth', authRoutes);
 app.use('/api/quizzes', quizRoutes);
-app.use('/api/analytics', analyticsRoutes); // Mount the analytics routes
+app.use('/api/analytics', analyticsRoutes); // This is where the quizzes route is mounted
 
 // Simple root route for testing
 app.get('/', (req, res) => {

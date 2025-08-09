@@ -63,7 +63,7 @@ const getQuizById = async (req, res) => {
 // @access  Private
 const submitQuiz = async (req, res) => {
   const { quizId, userAnswers } = req.body;
-  const userId = req.user._id; // User ID from auth middleware
+  const userId = req.user._id;
 
   try {
     const quiz = await Quiz.findById(quizId);
@@ -75,10 +75,8 @@ const submitQuiz = async (req, res) => {
     const processedAnswers = [];
 
     userAnswers.forEach(userAnswer => {
-      // Find the question using its ID within the quiz's questions array
       const question = quiz.questions.id(userAnswer.questionId);
       if (question) {
-        // Compare user's answer (e.g., "A") with the correct answer from the quiz
         const isCorrect = question.correctAnswer === userAnswer.userAnswer;
         if (isCorrect) {
           score++;
@@ -91,7 +89,6 @@ const submitQuiz = async (req, res) => {
       }
     });
 
-    // Create the new quiz attempt record
     const newAttempt = await QuizAttempt.create({
       userId,
       quizId,
@@ -99,15 +96,14 @@ const submitQuiz = async (req, res) => {
       totalQuestions: quiz.questions.length,
       answers: processedAnswers,
     });
-
-    // Push the new attempt's ID to the user's quizHistory
+    
     await User.findByIdAndUpdate(
       userId,
       { $push: { quizHistory: newAttempt._id } },
-      { new: true, useFindAndModify: false } // Return the updated user, prevent deprecation warning
+      { new: true, useFindAndModify: false }
     );
 
-    res.status(201).json(newAttempt); // Send back the created attempt details
+    res.status(201).json(newAttempt);
   } catch (error) {
     console.error('Error submitting quiz:', error);
     res.status(500).json({ message: 'Server error during quiz submission' });
