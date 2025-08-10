@@ -7,6 +7,7 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes'); // Import the analytics routes
+const subscriptionRoutes = require('./routes/subscriptionRoutes'); // Import the subscription routes
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/analytics', analyticsRoutes); // This is where the quizzes route is mounted
+app.use('/api/subscriptions', subscriptionRoutes); // Mount subscription routes
 
 // Simple root route for testing
 app.get('/', (req, res) => {

@@ -154,9 +154,50 @@ const getAllQuizzes = async (req, res) => {
     // Corrected to use $in for multiple difficulties
     filter.difficulty = { $in: Array.isArray(difficulty) ? difficulty : [difficulty] };
   }
+  
   if (category) {
-    // Corrected to use $in for multiple categories
-    filter.topic = { $in: Array.isArray(category) ? category : [category] };
+    // Map category names to their corresponding topics
+    const categoryToTopics = {
+      'Technology & Gadgets': [
+        'JavaScript Basics',
+        'React State Management',
+        'HTML & CSS Fundamentals',
+        'MongoDB Queries',
+        'Machine Learning Basics',
+        'Software Development Life Cycle (SDLC)',
+        'Advanced JavaScript Concepts',
+        'System Design & Architecture',
+        'Data Structures & Algorithms'
+      ],
+      'Science & Biology': [
+        'General Science',
+        'Quantum Physics for Beginners'
+      ],
+      'History & Events': [
+        'World History: Ancient Civilizations'
+      ],
+      'Arts & Literature': [
+        'Arts & Literature'
+      ],
+      'Pop Culture & Trivia': [
+        'Pop Culture Trivia'
+      ],
+      'General Knowledge': [
+        'General Knowledge Trivia'
+      ]
+    };
+
+    const categories = Array.isArray(category) ? category : [category];
+    const topics = categories.reduce((acc, cat) => {
+      if (categoryToTopics[cat]) {
+        acc.push(...categoryToTopics[cat]);
+      }
+      return acc;
+    }, []);
+
+    if (topics.length > 0) {
+      filter.topic = { $in: topics };
+    }
   }
 
   try {

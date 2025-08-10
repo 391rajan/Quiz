@@ -15,10 +15,10 @@ const HeroSection = () => {
               The AI-powered quiz generator that helps you learn and test your knowledge on any topic, anytime, anywhere.
             </p>
             <div className="mt-8 md:mt-10 flex flex-col sm:flex-row justify-center md:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
-              <Link to="#" className="bg-indigo-600 hover:bg-indigo-700 transition-colors text-white py-3 px-6 rounded-full text-lg font-semibold shadow-lg transform hover:scale-105">
+              <Link to="/create-quiz" className="bg-indigo-600 hover:bg-indigo-700 transition-colors text-white py-3 px-6 rounded-full text-lg font-semibold shadow-lg transform hover:scale-105">
                 Create a Quiz
               </Link>
-              <Link to="#" className="bg-white border-2 border-gray-300 hover:bg-gray-100 transition-colors text-gray-800 py-3 px-6 rounded-full text-lg font-semibold shadow-md transform hover:scale-105">
+              <Link to="/plans" className="bg-white border-2 border-gray-300 hover:bg-gray-100 transition-colors text-gray-800 py-3 px-6 rounded-full text-lg font-semibold shadow-md transform hover:scale-105">
                 View Our Plan
               </Link>
             </div>

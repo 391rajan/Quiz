@@ -110,4 +110,17 @@ const submitQuiz = async (req, res) => {
   }
 };
 
-module.exports = { generateQuiz, getQuizById, submitQuiz };
+// @desc    Get all quizzes for filtering
+// @route   GET /api/quizzes
+// @access  Private
+const getAllQuizzes = async (req, res) => {
+  try {
+    const quizzes = await Quiz.find({}).select('topic difficulty');
+    res.json(quizzes);
+  } catch (error) {
+    console.error('Error fetching quizzes:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { generateQuiz, getQuizById, submitQuiz, getAllQuizzes };

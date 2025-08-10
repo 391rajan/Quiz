@@ -9,6 +9,7 @@ import CreateQuizPage from './pages/CreateQuizPage';
 import DashboardPage from './pages/DashboardPage';
 import QuizPage from './pages/QuizPage';
 import ResultsPage from './pages/ResultsPage'; // Import the new page
+import PlanPage from './pages/PlanPage'; // Import the plan page
 
 const App = () => {
   return (
@@ -22,6 +23,7 @@ const App = () => {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/quiz/:id" element={<QuizPage />} />
           <Route path="/results/:attemptId" element={<ResultsPage />} /> {/* New route */}
+          <Route path="/plans" element={<PlanPage />} /> {/* New route for subscription plans */}
         </Routes>
       </Router>
     </AuthProvider>
