@@ -8,6 +8,8 @@ const { generateQuizQuestions } = require('../utils/aiService');
 // @route   POST /api/quizzes/generate
 // @access  Private
 const generateQuiz = async (req, res) => {
+  console.log('--- generateQuiz function called ---');
+  console.log('Request Body:', req.body);
   const { topic, difficulty, numQuestions } = req.body;
   const userId = req.user._id;
 
