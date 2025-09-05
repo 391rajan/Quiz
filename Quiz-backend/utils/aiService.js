@@ -1,5 +1,4 @@
 // File: backend/utils/aiService.js
-
 const fetch = require('node-fetch');
 
 const generateQuizQuestions = async (topic, difficulty, numQuestions) => {
@@ -19,7 +18,7 @@ const generateQuizQuestions = async (topic, difficulty, numQuestions) => {
 
   // Switched to OpenRouter's OpenAI-compatible payload structure
   const payload = {
-    model: "google/gemini-1.5-flash", // Specify the model on OpenRouter
+    model: "deepseek/deepseek-chat-v3.1:free", // Specify the model on OpenRouter
     messages: [
       { role: "user", content: prompt }
     ],
@@ -54,7 +53,16 @@ const generateQuizQuestions = async (topic, difficulty, numQuestions) => {
     }
 
     // Adapt to OpenRouter's response structure
-    const jsonString = result.choices[0].message.content;
+    let jsonString = result.choices[0].message.content;
+
+    // The model sometimes wraps the JSON in markdown, so we need to extract the raw JSON string.
+    const startIndex = jsonString.indexOf('[');
+    const endIndex = jsonString.lastIndexOf(']');
+
+    if (startIndex !== -1 && endIndex !== -1) {
+      jsonString = jsonString.substring(startIndex, endIndex + 1);
+    }
+
     return JSON.parse(jsonString);
   } catch (error) {
     console.error('Error calling OpenRouter API:', error);

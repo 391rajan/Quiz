@@ -32,20 +32,7 @@ const AuthLayout = ({ children }) => {
           <p className="mt-4 text-lg">
             Join QuizMaster and explore a world of customizable quizzes, instant feedback, and fun learning experiences.
           </p>
-          <div className="mt-8 flex justify-center space-x-4">
-            <Link
-              to="#"
-              className="bg-white text-indigo-600 py-3 px-6 rounded-full font-semibold shadow-lg hover:bg-gray-200 transition-colors"
-            >
-              Explore Quizzes
-            </Link>
-            <Link
-              to="#"
-              className="bg-transparent border-2 border-white text-white py-3 px-6 rounded-full font-semibold hover:bg-white hover:text-indigo-600 transition-colors"
-            >
-              Create a Quiz
-            </Link>
-          </div>
+          
         </div>
       </div>
       

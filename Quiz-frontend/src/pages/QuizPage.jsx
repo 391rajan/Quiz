@@ -25,7 +25,6 @@ const QuizPage = () => {
   const [userAnswers, setUserAnswers] = useState([]);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef(null);
 
   // Function to play warning sound
@@ -66,17 +65,6 @@ const QuizPage = () => {
       oscillator.stop(audioContext.currentTime + 0.5);
     } catch (error) {
       console.log('Audio not supported or blocked');
-    }
-  };
-
-  // Function to toggle pause/resume
-  const togglePause = () => {
-    if (isPaused) {
-      setIsPaused(false);
-      setIsTimerRunning(true);
-    } else {
-      setIsPaused(true);
-      setIsTimerRunning(false);
     }
   };
 
@@ -163,7 +151,6 @@ const QuizPage = () => {
       clearInterval(timerRef.current);
     }
     setIsTimerRunning(false);
-    setIsPaused(false); // Reset pause state
 
     // Save the user's answer
     const currentQuestion = quiz.questions[currentQuestionIndex];
@@ -250,23 +237,6 @@ const QuizPage = () => {
               {formatTimeRemaining(timeRemaining)}
             </span>
             <span className="text-sm text-gray-500">/ {formatTimeRemaining(questionTimeLimit)}</span>
-            
-            {/* Pause/Resume Button */}
-            <button
-              onClick={togglePause}
-              className="ml-2 p-1 rounded-full hover:bg-gray-100 transition-colors"
-              title={isPaused ? 'Resume Timer' : 'Pause Timer'}
-            >
-              {isPaused ? (
-                <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 002 0V8a1 1 0 00-.445-.832l-1.5-1A1 1 0 009.555 7.168z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              )}
-            </button>
           </div>
           
           <span className="text-sm font-semibold text-gray-600">+5</span>
@@ -296,7 +266,7 @@ const QuizPage = () => {
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-gray-500">
-                {isPaused ? 'Timer Paused' : 'Time Remaining'}
+                Time Remaining
               </span>
               <span className={`text-sm font-medium ${
                 timeRemaining <= 10 ? 'text-red-600' : 
@@ -308,18 +278,12 @@ const QuizPage = () => {
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className={`h-2 rounded-full transition-all duration-1000 ${
-                  isPaused ? 'bg-gray-400' :
                   timeRemaining <= 10 ? 'bg-red-500' : 
                   timeRemaining <= 20 ? 'bg-yellow-500' : 'bg-indigo-500'
                 }`}
                 style={{ width: `${(timeRemaining / questionTimeLimit) * 100}%` }}
               ></div>
             </div>
-            {isPaused && (
-              <div className="text-center mt-2">
-                <span className="text-sm text-gray-500 italic">Timer is paused</span>
-              </div>
-            )}
           </div>
           
           <div className="max-w-md mx-auto">
