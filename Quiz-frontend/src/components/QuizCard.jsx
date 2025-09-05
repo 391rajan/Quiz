@@ -6,51 +6,47 @@ import { getQuizImage, getQuizDuration } from '../utils/quizImages';
 const QuizCard = ({ quiz }) => {
   const quizImage = getQuizImage(quiz.topic);
   const duration = getQuizDuration(quiz.difficulty, quiz.questions.length);
-  
+
+  const difficultyStyles = {
+    easy: 'bg-green-100 text-green-800',
+    medium: 'bg-yellow-100 text-yellow-800',
+    hard: 'bg-red-100 text-red-800',
+  };
+
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg flex flex-col min-h-[280px] group">
-      <div className="relative overflow-hidden rounded-lg mb-4 h-32">
-        <img 
-          src={quizImage} 
-          alt={quiz.topic}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+    <div className="flex flex-col bg-white rounded-lg shadow-md overflow-hidden transition-transform duration-300 ease-in-out hover:-translate-y-1 hover:shadow-xl">
+      {/* Image Container */}
+      <div className="relative">
+        <Link to={`/quiz/${quiz._id}`} className="block">
+          <img src={quizImage} alt={quiz.topic} className="w-full h-40 object-cover" />
+        </Link>
+        <div className={`absolute top-0 right-0 mt-2 mr-2 text-xs font-semibold px-2.5 py-1 rounded-full ${difficultyStyles[quiz.difficulty.toLowerCase()] || 'bg-gray-100 text-gray-800'}`}>
+          {quiz.difficulty}
+        </div>
       </div>
-      
-      <h4 className="text-lg font-semibold mb-2 text-gray-900 group-hover:text-indigo-600 transition-colors">{quiz.topic}</h4>
-      
-      <div className="space-y-2 mb-4">
-        <p className="text-sm text-gray-500 flex items-center">
-          <svg className="w-4 h-4 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 002 0V8a1 1 0 00-.445-.832l-1.5-1A1 1 0 009.555 7.168z" />
-          </svg>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            quiz.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-            quiz.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-            'bg-red-100 text-red-800'
-          }`}>
-            {quiz.difficulty.charAt(0).toUpperCase() + quiz.difficulty.slice(1)}
+
+      {/* Content Area */}
+      <div className="p-4 flex-grow flex flex-col">
+        <h4 className="text-lg font-bold text-gray-800 mb-2 flex-grow">{quiz.topic}</h4>
+        <p className="text-sm text-gray-600 mb-4">
+          Test your knowledge on {quiz.topic}. A great way to challenge yourself and learn something new!
+        </p>
+        
+        {/* Info Bar */}
+        <div className="flex justify-between items-center text-sm text-gray-600 border-t border-gray-100 pt-3">
+          <span className="flex items-center">
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            {quiz.questions.length} Questions
           </span>
-        </p>
-        <p className="text-sm text-gray-500 flex items-center">
-          <svg className="w-4 h-4 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 11V7a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1H9a1 1 0 01-1-1z" />
-          </svg>
-          {quiz.questions.length} Questions
-        </p>
-        <p className="text-sm text-gray-500 flex items-center">
-          <svg className="w-4 h-4 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 002 0V8a1 1 0 00-.445-.832l-1.5-1A1 1 0 009.555 7.168z" />
-          </svg>
-          {duration}
-        </p>
+          <span className="flex items-center">
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            {duration}
+          </span>
+        </div>
       </div>
-      
-      <Link
-        to={`/quiz/${quiz._id}`}
-        className="mt-auto block text-center bg-indigo-600 hover:bg-indigo-700 transition-all duration-300 text-white py-2 px-4 rounded-full text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-      >
+
+      {/* Action Footer */}
+      <Link to={`/quiz/${quiz._id}`} className="block bg-gray-50 hover:bg-indigo-50 p-4 text-center font-bold text-indigo-600 transition-colors duration-300">
         Start Quiz
       </Link>
     </div>

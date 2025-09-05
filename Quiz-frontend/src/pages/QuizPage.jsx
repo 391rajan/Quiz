@@ -1,6 +1,6 @@
 // File: frontend/src/pages/QuizPage.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../components/Header';
@@ -43,8 +43,8 @@ const QuizPage = () => {
       
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.2);
-    } catch (error) {
-      console.log('Audio not supported or blocked');
+    } catch (err) {
+      console.error('Audio playback failed:', err);
     }
   };
 
@@ -63,8 +63,8 @@ const QuizPage = () => {
       
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (error) {
-      console.log('Audio not supported or blocked');
+    } catch (err) {
+      console.error('Audio playback failed:', err);
     }
   };
 
@@ -90,6 +90,47 @@ const QuizPage = () => {
     fetchQuiz();
   }, [id]);
 
+  const submitQuiz = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      };
+      const { data } = await axios.post(`http://localhost:5000/api/quizzes/submit`, {
+        quizId: id,
+        userAnswers,
+      }, config);
+      console.log('Quiz submitted successfully:', data);
+      
+      navigate(`/results/${data._id}`);
+      
+    } catch (err) {
+      console.error('Error submitting quiz:', err);
+      setError('Failed to submit quiz. Please try again.');
+    }
+  }, [id, userAnswers, navigate]);
+
+  const handleTimeUp = useCallback(() => {
+    if (!quiz) return;
+
+    const currentQuestion = quiz.questions[currentQuestionIndex];
+    const newAnswer = {
+      questionId: currentQuestion._id,
+      userAnswer: selectedAnswer || null,
+    };
+    setUserAnswers(prevAnswers => [...prevAnswers, newAnswer]);
+
+    if (currentQuestionIndex < quiz.questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setSelectedAnswer(null);
+    } else {
+      submitQuiz();
+    }
+  }, [quiz, currentQuestionIndex, selectedAnswer, submitQuiz]);
+
   // Start timer for current question
   useEffect(() => {
     if (quiz && currentQuestionIndex < quiz.questions.length) {
@@ -105,13 +146,11 @@ const QuizPage = () => {
 
     timerRef.current = setInterval(() => {
       setTimeRemaining((prev) => {
-        // Play warning sound at 10 seconds
         if (prev === 10) {
           playWarningSound();
         }
         
         if (prev <= 1) {
-          // Time's up, play sound and automatically move to next question
           playTimeUpSound();
           handleTimeUp();
           return 0;
@@ -125,34 +164,14 @@ const QuizPage = () => {
         clearInterval(timerRef.current);
       }
     };
-  }, [isTimerRunning, timeRemaining]);
-
-  const handleTimeUp = () => {
-    // Save the current answer (even if none selected)
-    const currentQuestion = quiz.questions[currentQuestionIndex];
-    const newAnswer = {
-      questionId: currentQuestion._id,
-      userAnswer: selectedAnswer || null, // Save null if no answer selected
-    };
-    setUserAnswers([...userAnswers, newAnswer]);
-
-    // Move to next question or submit quiz
-    if (currentQuestionIndex < quiz.questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswer(null);
-    } else {
-      submitQuiz();
-    }
-  };
+  }, [isTimerRunning, timeRemaining, handleTimeUp]);
 
   const handleNextQuestion = () => {
-    // Clear the timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
     setIsTimerRunning(false);
 
-    // Save the user's answer
     const currentQuestion = quiz.questions[currentQuestionIndex];
     const newAnswer = {
       questionId: currentQuestion._id,
@@ -160,37 +179,11 @@ const QuizPage = () => {
     };
     setUserAnswers([...userAnswers, newAnswer]);
 
-    // Move to the next question or submit the quiz
     if (currentQuestionIndex < quiz.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswer(null); // Reset selected answer for the next question
+      setSelectedAnswer(null);
     } else {
-      // End of quiz, submit answers
       submitQuiz();
-    }
-  };
-
-  const submitQuiz = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      };
-      const { data } = await axios.post(`http://localhost:5000/api/quizzes/submit`, {
-        quizId: id,
-        userAnswers,
-      }, config);
-      console.log('Quiz submitted successfully:', data);
-      
-      // Navigate to the results page, passing the newly created attempt ID
-      navigate(`/results/${data._id}`);
-      
-    } catch (err) {
-      console.error('Error submitting quiz:', err);
-      setError('Failed to submit quiz. Please try again.');
     }
   };
 
