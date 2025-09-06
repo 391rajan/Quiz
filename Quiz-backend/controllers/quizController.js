@@ -50,7 +50,13 @@ const getQuizById = async (req, res) => {
   try {
     const quiz = await Quiz.findById(req.params.id);
     if (quiz) {
-      res.json(quiz);
+      // Exclude correct answers and explanations from the quiz sent to the client
+      const quizForStudent = { ...quiz.toObject() };
+      quizForStudent.questions = quizForStudent.questions.map(q => {
+        const { correctAnswer, explanation, ...question } = q;
+        return question;
+      });
+      res.json(quizForStudent);
     } else {
       res.status(404).json({ message: 'Quiz not found' });
     }

@@ -232,7 +232,6 @@ const QuizPage = () => {
             <span className="text-sm text-gray-500">/ {formatTimeRemaining(questionTimeLimit)}</span>
           </div>
           
-          <span className="text-sm font-semibold text-gray-600">+5</span>
         </div>
 
         {/* Question Card */}
@@ -301,12 +300,6 @@ const QuizPage = () => {
 
         {/* Navigation Buttons */}
         <div className="flex justify-end mt-8 space-x-4">
-          <button
-            onClick={() => navigate('/')}
-            className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-full hover:bg-gray-100 transition-colors"
-          >
-            Report
-          </button>
           <button
             onClick={handleNextQuestion}
             className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-full shadow-md hover:bg-indigo-700 transition-colors"
