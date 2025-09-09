@@ -1,12 +1,12 @@
 // File: backend/controllers/analyticsController.js
 const QuizAttempt = require('../models/QuizAttempt');
 const Quiz = require('../models/Quiz');
+const asyncHandler = require('express-async-handler');
 
 // @desc    Get detailed quiz results for a specific attempt
 // @route   GET /api/analytics/results/:attemptId
 // @access  Private
-const getQuizResults = async (req, res) => {
-  try {
+const getQuizResults = asyncHandler(async (req, res) => {
     const attempt = await QuizAttempt.findById(req.params.attemptId)
       .populate({
         path: 'quizId',
@@ -45,19 +45,17 @@ const getQuizResults = async (req, res) => {
     };
     
     res.json(results);
-  } catch (error) {
-    console.error('Error fetching quiz results:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+});
 
 // @desc    Get user's overall performance and weak/strong topics
 // @route   GET /api/analytics/me
 // @access  Private
-const getUserAnalytics = async (req, res) => {
+const getUserAnalytics = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  try {
-    const attempts = await QuizAttempt.find({ userId }).populate('quizId', 'topic difficulty');
+    const attempts = await QuizAttempt.find({ userId }).populate({
+      path: 'quizId',
+      select: 'topic difficulty questions',
+    });
 
     if (attempts.length === 0) {
       return res.json({
@@ -66,11 +64,12 @@ const getUserAnalytics = async (req, res) => {
         weakTopics: [],
         strongTopics: [],
         quizHistory: [],
-        overallScore: { totalScore: 0, totalQuestions: 0, percentage: 0 }
+        overallScore: { totalScore: 0, totalQuestions: 0, percentage: 0 },
       });
     }
 
     const topicPerformance = {};
+    const subTopicPerformance = {};
     let overallCorrect = 0;
     let overallTotal = 0;
 
@@ -78,15 +77,38 @@ const getUserAnalytics = async (req, res) => {
       if (attempt.quizId) {
         const topic = attempt.quizId.topic;
         if (!topicPerformance[topic]) {
-          topicPerformance[topic] = { totalScore: 0, totalQuestions: 0, attemptsCount: 0, incorrectCount: 0 };
+          topicPerformance[topic] = {
+            totalScore: 0,
+            totalQuestions: 0,
+            attemptsCount: 0,
+            incorrectCount: 0,
+          };
         }
         topicPerformance[topic].totalScore += attempt.score;
         topicPerformance[topic].totalQuestions += attempt.totalQuestions;
         topicPerformance[topic].attemptsCount++;
-        topicPerformance[topic].incorrectCount += (attempt.totalQuestions - attempt.score);
+        topicPerformance[topic].incorrectCount +=
+          attempt.totalQuestions - attempt.score;
 
         overallCorrect += attempt.score;
         overallTotal += attempt.totalQuestions;
+
+        attempt.answers.forEach(answer => {
+          if (answer.subTopic) {
+            const subTopic = answer.subTopic;
+            if (!subTopicPerformance[subTopic]) {
+              subTopicPerformance[subTopic] = {
+                correct: 0,
+                total: 0,
+                topic: topic,
+              };
+            }
+            if (answer.isCorrect) {
+              subTopicPerformance[subTopic].correct++;
+            }
+            subTopicPerformance[subTopic].total++;
+          }
+        });
       }
     });
 
@@ -95,7 +117,10 @@ const getUserAnalytics = async (req, res) => {
     const analyticsSummary = {};
 
     for (const topic in topicPerformance) {
-      const avgScore = (topicPerformance[topic].totalScore / topicPerformance[topic].totalQuestions) * 100;
+      const avgScore =
+        (topicPerformance[topic].totalScore /
+          topicPerformance[topic].totalQuestions) *
+        100;
       analyticsSummary[topic] = {
         averageScore: parseFloat(avgScore.toFixed(2)),
         attempts: topicPerformance[topic].attemptsCount,
@@ -103,50 +128,77 @@ const getUserAnalytics = async (req, res) => {
       };
 
       if (avgScore < 60) {
+        const weakSubTopics = [];
+        for (const subTopic in subTopicPerformance) {
+          if (subTopicPerformance[subTopic].topic === topic) {
+            const subTopicAvg =
+              (subTopicPerformance[subTopic].correct /
+                subTopicPerformance[subTopic].total) *
+              100;
+            if (subTopicAvg < 60) {
+              weakSubTopics.push({
+                subTopic,
+                averageScore: subTopicAvg.toFixed(2),
+                correct: subTopicPerformance[subTopic].correct,
+                total: subTopicPerformance[subTopic].total,
+              });
+            }
+          }
+        }
+
         weakTopics.push({
           topic,
           averageScore: avgScore.toFixed(2),
-          reason: `You scored an average of ${avgScore.toFixed(2)}% on this topic, with ${topicPerformance[topic].incorrectCount} incorrect answers over ${topicPerformance[topic].attemptsCount} attempts. Focus on this area!`,
+          reason: `You scored an average of ${avgScore.toFixed(
+            2
+          )}% on this topic, with ${
+            topicPerformance[topic].incorrectCount
+          } incorrect answers over ${
+            topicPerformance[topic].attemptsCount
+          } attempts. Focus on this area!`,
+          subTopics: weakSubTopics,
         });
       } else if (avgScore >= 80) {
         strongTopics.push({
           topic,
           averageScore: avgScore.toFixed(2),
-          message: `Excellent! You scored an average of ${avgScore.toFixed(2)}% on this topic. Keep up the great work!`,
+          message: `Excellent! You scored an average of ${avgScore.toFixed(
+            2
+          )}% on this topic. Keep up the great work!`,
         });
       }
     }
 
-    const overallPercentage = overallTotal > 0 ? (overallCorrect / overallTotal) * 100 : 0;
+    const overallPercentage =
+      overallTotal > 0 ? (overallCorrect / overallTotal) * 100 : 0;
 
     res.json({
       analytics: analyticsSummary,
       weakTopics,
       strongTopics,
-      quizHistory: attempts.filter(attempt => attempt.quizId).map(attempt => ({
-        _id: attempt._id,
-        quizId: attempt.quizId._id,
-        topic: attempt.quizId.topic,
-        score: attempt.score,
-        totalQuestions: attempt.totalQuestions,
-        dateTaken: attempt.dateTaken,
-      })).sort((a, b) => new Date(b.dateTaken) - new Date(a.dateTaken)),
+      quizHistory: attempts
+        .filter(attempt => attempt.quizId)
+        .map(attempt => ({
+          _id: attempt._id,
+          quizId: attempt.quizId._id,
+          topic: attempt.quizId.topic,
+          score: attempt.score,
+          totalQuestions: attempt.totalQuestions,
+          dateTaken: attempt.dateTaken,
+        }))
+        .sort((a, b) => new Date(b.dateTaken) - new Date(a.dateTaken)),
       overallScore: {
         totalScore: overallCorrect,
         totalQuestions: overallTotal,
-        percentage: parseFloat(overallPercentage.toFixed(2))
-      }
+        percentage: parseFloat(overallPercentage.toFixed(2)),
+      },
     });
-  } catch (error) {
-    console.error('Error fetching user analytics:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+});
 
 // @desc    Get all available quizzes with optional filters
 // @route   GET /api/analytics/quizzes
 // @access  Public
-const getAllQuizzes = async (req, res) => {
+const getAllQuizzes = asyncHandler(async (req, res) => {
   const { difficulty, category } = req.query;
   const filter = {};
 
@@ -200,18 +252,10 @@ const getAllQuizzes = async (req, res) => {
     }
   }
 
-  try {
-    const quizzes = await Quiz.find(filter).populate('createdBy', 'username');
+  const quizzes = await Quiz.find(filter).populate('createdBy', 'username');
 
-    if (!quizzes || quizzes.length === 0) {
-      return res.status(404).json({ message: 'No quizzes found matching your criteria.' });
-    }
-
-    res.status(200).json(quizzes);
-  } catch (error) {
-    console.error('Error fetching all quizzes:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+  // Always return the quizzes array with 200 status, even if empty
+  res.status(200).json(quizzes);
+});
 
 module.exports = { getQuizResults, getUserAnalytics, getAllQuizzes };

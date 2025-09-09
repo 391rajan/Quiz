@@ -6,6 +6,7 @@ const answerSchema = mongoose.Schema({
   questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz', required: true },
   userAnswer: { type: String },
   isCorrect: { type: Boolean, required: true },
+  subTopic: { type: String },
 });
 
 const quizAttemptSchema = mongoose.Schema(

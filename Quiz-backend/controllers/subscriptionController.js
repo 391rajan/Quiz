@@ -1,8 +1,8 @@
 const Subscription = require('../models/Subscription');
+const asyncHandler = require('express-async-handler');
 
 // Subscribe to newsletter
-const subscribe = async (req, res) => {
-  try {
+const subscribe = asyncHandler(async (req, res) => {
     const { email, source = 'homepage' } = req.body;
 
     if (!email) {
@@ -45,29 +45,19 @@ const subscribe = async (req, res) => {
       email: subscription.email
     });
 
-  } catch (error) {
-    console.error('Subscription error:', error);
-    res.status(500).json({ message: 'Server error. Please try again later.' });
-  }
-};
+});
 
 // Get all subscriptions (admin only)
-const getAllSubscriptions = async (req, res) => {
-  try {
+const getAllSubscriptions = asyncHandler(async (req, res) => {
     const subscriptions = await Subscription.find({})
       .sort({ createdAt: -1 })
       .select('-__v');
 
     res.status(200).json(subscriptions);
-  } catch (error) {
-    console.error('Error fetching subscriptions:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+});
 
 // Unsubscribe from newsletter
-const unsubscribe = async (req, res) => {
-  try {
+const unsubscribe = asyncHandler(async (req, res) => {
     const { email } = req.params;
 
     if (!email) {
@@ -85,15 +75,10 @@ const unsubscribe = async (req, res) => {
 
     res.status(200).json({ message: 'Successfully unsubscribed' });
 
-  } catch (error) {
-    console.error('Unsubscribe error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+});
 
 // Get subscription statistics
-const getSubscriptionStats = async (req, res) => {
-  try {
+const getSubscriptionStats = asyncHandler(async (req, res) => {
     const totalSubscriptions = await Subscription.countDocuments({ status: { $ne: 'unsubscribed' } });
     const pendingSubscriptions = await Subscription.countDocuments({ status: 'pending' });
     const confirmedSubscriptions = await Subscription.countDocuments({ status: 'confirmed' });
@@ -110,11 +95,7 @@ const getSubscriptionStats = async (req, res) => {
       bySource: sourceStats
     });
 
-  } catch (error) {
-    console.error('Error fetching subscription stats:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+});
 
 module.exports = {
   subscribe,

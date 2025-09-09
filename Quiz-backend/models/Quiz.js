@@ -8,6 +8,7 @@ const questionSchema = mongoose.Schema({
   options: [{ type: String }],
   correctAnswer: { type: String, required: true },
   explanation: { type: String }, // New field for explanation
+  subTopic: { type: String }, // New field for sub-topic
 });
 
 const quizSchema = mongoose.Schema(
