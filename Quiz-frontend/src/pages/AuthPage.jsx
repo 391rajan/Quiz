@@ -1,7 +1,7 @@
 // File: pages/AuthPage.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { authAPI, APIError } from '../utils/api';
 import AuthLayout from '../AuthLayout';
 import { useAuth } from '../context/AuthContext';
 
@@ -86,14 +86,15 @@ const AuthPage = () => {
     setError(null);
 
     try {
-      const { data } = await axios.post('http://localhost:5000/api/auth/login', {
-        email: loginEmail,
-        password: loginPassword,
-      });
+      const data = await authAPI.login({ email: loginEmail, password: loginPassword });
       login({ username: data.username, token: data.token });
       navigate('/quizzes'); 
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      if (err instanceof APIError) {
+        setError(err.message || 'Login failed. Please check your credentials.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -109,15 +110,19 @@ const AuthPage = () => {
     setError(null);
     
     try {
-      const { data } = await axios.post('http://localhost:5000/api/auth/register', {
-        username: signupUsername,
-        email: signupEmail,
-        password: signupPassword,
+      const data = await authAPI.register({ 
+        username: signupUsername, 
+        email: signupEmail, 
+        password: signupPassword 
       });
       login({ username: data.username, token: data.token });
       navigate('/quizzes'); 
     } catch (err) {
-      setError(err.response?.data?.message || 'Signup failed. Please try again.');
+      if (err instanceof APIError) {
+        setError(err.message || 'Signup failed. Please try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

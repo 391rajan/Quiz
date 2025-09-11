@@ -1,5 +1,15 @@
 // API utility functions
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+// Custom Error for API calls
+export class APIError extends Error {
+  constructor(message, status, details) {
+    super(message);
+    this.name = 'APIError';
+    this.status = status;
+    this.details = details;
+  }
+}
 
 // Helper function to make API calls
 const apiCall = async (endpoint, options = {}) => {
@@ -18,13 +28,41 @@ const apiCall = async (endpoint, options = {}) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      let errorData;
+      let errorMessage;
+      const responseClone = response.clone();
+      try {
+        // Try to parse the error response body as JSON
+        errorData = await response.json();
+        errorMessage = errorData.message;
+      } catch (e) {
+        // If parsing fails, use the raw response text
+        errorMessage = await responseClone.text();
+      }
+      
+      // Throw a custom error with more context
+      throw new APIError(
+        errorMessage || 'An API error occurred',
+        response.status,
+        errorData ? errorData.details : undefined
+      );
     }
     
+    // For successful but empty responses (e.g., 204 No Content)
+    if (response.status === 204) {
+        return null;
+    }
+
     return await response.json();
+
   } catch (error) {
+    // Re-throw custom API errors, wrap others
+    if (error instanceof APIError) {
+      throw error;
+    }
+    
     console.error('API call failed:', error);
-    throw error;
+    throw new APIError(error.message || 'A network error occurred.', 0, error);
   }
 };
 

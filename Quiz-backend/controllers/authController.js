@@ -7,7 +7,7 @@ const asyncHandler = require('express-async-handler');
 // A helper function to generate a JSON Web Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '8h',
+    expiresIn: '24h',
   });
 };
 
@@ -17,30 +17,49 @@ const generateToken = (id) => {
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
-  // Check if the user already exists
-  const userExists = await User.findOne({ email });
-  if (userExists) {
+  // Check if the user already exists by email or username
+  const userExistsByEmail = await User.findOne({ email });
+  if (userExistsByEmail) {
     res.status(400);
-    throw new Error('User already exists');
+    throw new Error('A user with this email already exists.');
   }
 
-  // Create a new user
-  const user = await User.create({
-    username,
-    email,
-    password,
-  });
-
-  if (user) {
-    res.status(201).json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      token: generateToken(user._id),
-    });
-  } else {
+  const userExistsByUsername = await User.findOne({ username });
+  if (userExistsByUsername) {
     res.status(400);
-    throw new Error('Invalid user data');
+    throw new Error('This username is already taken. Please choose another one.');
+  }
+
+  try {
+    // Create a new user
+    const user = await User.create({
+      username,
+      email,
+      password,
+    });
+
+    if (user) {
+      res.status(201).json({
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        token: generateToken(user._id),
+      });
+    } else {
+      res.status(400);
+      throw new Error('Invalid user data');
+    }
+  } catch (error) {
+    // Handle potential race conditions or other database errors
+    if (error.code === 11000) {
+      res.status(400);
+      if (error.keyPattern.username) {
+        throw new Error('This username is already taken.');
+      } else if (error.keyPattern.email) {
+        throw new Error('This email is already registered.');
+      }
+    }
+    throw error; // Rethrow other errors
   }
 });
 

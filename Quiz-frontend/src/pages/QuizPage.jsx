@@ -2,20 +2,20 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { quizAPI, APIError } from '../utils/api';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { getQuestionTimeLimit, formatTimeRemaining } from '../utils/quizImages';
+import ErrorState from '../components/ErrorState';
 
-// Placeholder for a loading spinner
 const LoadingSpinner = () => (
-  <div className="flex justify-center items-center h-screen">
-    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
-  </div>
+    <div className="flex justify-center items-center h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-4 border-b-4 border-purple-600"></div>
+    </div>
 );
 
 const QuizPage = () => {
-  const { id } = useParams(); // Get quiz ID from URL
+  const { id } = useParams();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,112 +26,68 @@ const QuizPage = () => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const timerRef = useRef(null);
+  const questionContainerRef = useRef(null);
 
-  // Function to play warning sound
-  const playWarningSound = () => {
+  const fetchQuiz = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      // Create a simple beep sound using Web Audio API
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.2);
+      const data = await quizAPI.getQuizById(id);
+      setQuiz(data);
     } catch (err) {
-      console.error('Audio playback failed:', err);
-    }
-  };
-
-  // Function to play time up sound
-  const playTimeUpSound = () => {
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
-      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (err) {
-      console.error('Audio playback failed:', err);
-    }
-  };
-
-  useEffect(() => {
-    const fetchQuiz = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const config = {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        };
-        const { data } = await axios.get(`http://localhost:5000/api/quizzes/${id}`, config);
-        setQuiz(data);
-      } catch (err) {
-        console.error('Error fetching quiz:', err);
-        setError('Failed to load quiz. Please try again.');
-      } finally {
-        setLoading(false);
+      console.error('Error fetching quiz:', err);
+      if (err instanceof APIError) {
+        setError(err.message || 'Failed to load quiz. Please try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
       }
-    };
-    fetchQuiz();
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
-  const submitQuiz = useCallback(async () => {
+  useEffect(() => {
+    fetchQuiz();
+  }, [fetchQuiz]);
+
+  const submitQuiz = useCallback(async (finalAnswers) => {
     try {
-      const token = localStorage.getItem('token');
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      };
-      const { data } = await axios.post(`http://localhost:5000/api/quizzes/submit`, {
-        quizId: id,
-        userAnswers,
-      }, config);
-      console.log('Quiz submitted successfully:', data);
-      
+      const data = await quizAPI.submitQuiz({ quizId: id, userAnswers: finalAnswers });
       navigate(`/results/${data._id}`);
-      
     } catch (err) {
       console.error('Error submitting quiz:', err);
-      setError('Failed to submit quiz. Please try again.');
+      setError(err.message || 'Failed to submit quiz. Please try again.');
     }
-  }, [id, userAnswers, navigate]);
+  }, [id, navigate]);
 
-  const handleTimeUp = useCallback(() => {
-    if (!quiz) return;
-
-    const currentQuestion = quiz.questions[currentQuestionIndex];
-    const newAnswer = {
-      questionId: currentQuestion._id,
-      userAnswer: selectedAnswer || null,
-    };
-    setUserAnswers(prevAnswers => [...prevAnswers, newAnswer]);
-
-    if (currentQuestionIndex < quiz.questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswer(null);
-    } else {
-      submitQuiz();
+  const handleNextQuestion = useCallback(() => {
+    if (questionContainerRef.current) {
+        questionContainerRef.current.classList.add('animate-fade-out');
     }
-  }, [quiz, currentQuestionIndex, selectedAnswer, submitQuiz]);
 
-  // Start timer for current question
+    setTimeout(() => {
+        const currentQuestion = quiz.questions[currentQuestionIndex];
+        const newAnswer = {
+            questionId: currentQuestion._id,
+            userAnswer: selectedAnswer,
+        };
+        const updatedAnswers = [...userAnswers, newAnswer];
+        setUserAnswers(updatedAnswers);
+
+        if (currentQuestionIndex < quiz.questions.length - 1) {
+            setCurrentQuestionIndex(prevIndex => prevIndex + 1);
+            setSelectedAnswer(null);
+            if (questionContainerRef.current) {
+                questionContainerRef.current.classList.remove('animate-fade-out');
+                questionContainerRef.current.classList.add('animate-fade-in');
+            }
+        } else {
+            submitQuiz(updatedAnswers);
+        }
+    }, 500); // Match animation duration
+}, [quiz, currentQuestionIndex, selectedAnswer, userAnswers, submitQuiz]);
+
+
   useEffect(() => {
     if (quiz && currentQuestionIndex < quiz.questions.length) {
       const questionTimeLimit = getQuestionTimeLimit(quiz.difficulty);
@@ -140,59 +96,40 @@ const QuizPage = () => {
     }
   }, [quiz, currentQuestionIndex]);
 
-  // Timer countdown effect
   useEffect(() => {
-    if (!isTimerRunning || timeRemaining <= 0) return;
+    if (!isTimerRunning || timeRemaining <= 0) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        return;
+    }
 
     timerRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev === 10) {
-          playWarningSound();
-        }
-        
+      setTimeRemaining(prev => {
         if (prev <= 1) {
-          playTimeUpSound();
-          handleTimeUp();
+          clearInterval(timerRef.current);
+          handleNextQuestion(); // Automatically move to next question
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [isTimerRunning, timeRemaining, handleTimeUp]);
-
-  const handleNextQuestion = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    setIsTimerRunning(false);
-
-    const currentQuestion = quiz.questions[currentQuestionIndex];
-    const newAnswer = {
-      questionId: currentQuestion._id,
-      userAnswer: selectedAnswer,
-    };
-    setUserAnswers([...userAnswers, newAnswer]);
-
-    if (currentQuestionIndex < quiz.questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswer(null);
-    } else {
-      submitQuiz();
-    }
-  };
+    return () => clearInterval(timerRef.current);
+  }, [isTimerRunning, timeRemaining, handleNextQuestion]);
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
   if (error) {
-    return <div className="text-center p-8 text-red-500">{error}</div>;
+    return (
+        <div className="font-inter antialiased text-gray-800 bg-gray-50 min-h-screen">
+            <Header />
+            <main className="container mx-auto px-4 md:px-8 py-16">
+                <ErrorState message={error} onRetry={fetchQuiz} />
+            </main>
+            <Footer />
+        </div>
+    );
   }
 
   if (!quiz) {
@@ -200,115 +137,73 @@ const QuizPage = () => {
   }
 
   const currentQuestion = quiz.questions[currentQuestionIndex];
-  const questionTimeLimit = getQuestionTimeLimit(quiz.difficulty);
+  const progressPercentage = ((currentQuestionIndex + 1) / quiz.questions.length) * 100;
 
   return (
-    <div className="font-inter antialiased text-gray-800 bg-gray-50 min-h-screen p-8">
+    <div className="font-inter antialiased text-gray-800 bg-gray-100 min-h-screen flex flex-col">
       <Header />
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-8">
-        {/* Progress Bar */}
-        <div className="h-2 bg-gray-200 rounded-full mb-8">
-          <div
-            className="h-full bg-indigo-600 rounded-full transition-all duration-500"
-            style={{ width: `${((currentQuestionIndex + 1) / quiz.questions.length) * 100}%` }}
-          ></div>
-        </div>
-        
-        {/* Question Counter, Timer & Score */}
-        <div className="flex justify-between items-center mb-8">
-          <span className="text-sm text-gray-500">{`Question ${currentQuestionIndex + 1} of ${quiz.questions.length}`}</span>
-          
-          {/* Timer Display */}
-          <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-            </svg>
-            <span className={`text-lg font-mono font-bold ${
-              timeRemaining <= 10 ? 'text-red-600' : 
-              timeRemaining <= 20 ? 'text-yellow-600' : 'text-gray-700'
-            }`}>
-              {formatTimeRemaining(timeRemaining)}
-            </span>
-            <span className="text-sm text-gray-500">/ {formatTimeRemaining(questionTimeLimit)}</span>
-          </div>
-          
-        </div>
+      <main className="flex-grow container mx-auto px-4 md:px-8 py-12 flex items-center">
+        <div ref={questionContainerRef} className="w-full max-w-4xl mx-auto">
+            <div className="bg-white rounded-xl shadow-2xl p-8">
+                {/* Progress Bar */}
+                <div className="mb-8">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-semibold text-gray-600">{`Question ${currentQuestionIndex + 1} of ${quiz.questions.length}`}</span>
+                        <span className="text-sm font-semibold text-gray-600">{quiz.topic}</span>
+                    </div>
+                    <div className="h-3 bg-gray-200 rounded-full">
+                        <div
+                            className="h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${progressPercentage}%` }}
+                        ></div>
+                    </div>
+                </div>
+                
+                {/* Question and Timer */}
+                <div className="text-center mb-8">
+                    <h3 className="text-3xl font-bold mb-4 text-gray-900">{currentQuestion.questionText}</h3>
+                    <div className="flex items-center justify-center space-x-2 text-2xl font-bold font-mono"
+                        role="timer" aria-live="assertive">
+                        <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span className={timeRemaining <= 10 ? 'text-red-500' : 'text-gray-800'}>
+                            {formatTimeRemaining(timeRemaining)}
+                        </span>
+                    </div>
+                </div>
+                
+                {/* Options */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {currentQuestion.options.map((option, index) => {
+                        const optionLetter = String.fromCharCode(65 + index);
+                        return (
+                            <button
+                                key={index}
+                                onClick={() => setSelectedAnswer(optionLetter)}
+                                className={`w-full text-left p-5 rounded-lg border-2 text-lg transition-all duration-200 transform hover:scale-105 ${
+                                    selectedAnswer === optionLetter
+                                    ? 'bg-purple-600 border-purple-700 text-white font-bold shadow-lg'
+                                    : 'bg-white border-gray-300 hover:bg-purple-50 hover:border-purple-500'
+                                }`}
+                            >
+                                <span className="font-bold mr-3">{optionLetter}.</span>{option}
+                            </button>
+                        );
+                    })}
+                </div>
 
-        {/* Question Card */}
-        <div className="text-center p-8 border border-gray-200 rounded-lg shadow-sm">
-          {/* Time Warning Notification */}
-          {timeRemaining <= 10 && timeRemaining > 0 && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
-              <div className="flex items-center justify-center space-x-2">
-                <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <span className="text-red-800 font-medium">
-                  Time is running out! Please answer quickly.
-                </span>
-              </div>
+                {/* Navigation Button */}
+                <div className="flex justify-end mt-10">
+                    <button
+                        onClick={handleNextQuestion}
+                        className="px-10 py-4 bg-indigo-600 text-white font-bold text-lg rounded-full hover:bg-indigo-700 transition-transform transform hover:scale-105 shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
+                        disabled={!selectedAnswer}
+                    >
+                        {currentQuestionIndex < quiz.questions.length - 1 ? 'Next Question' : 'Finish Quiz'}
+                    </button>
+                </div>
             </div>
-          )}
-          
-          <h3 className="text-2xl font-bold mb-8">
-            {currentQuestion.questionText}
-          </h3>
-          
-          {/* Timer Progress Bar */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-500">
-                Time Remaining
-              </span>
-              <span className={`text-sm font-medium ${
-                timeRemaining <= 10 ? 'text-red-600' : 
-                timeRemaining <= 20 ? 'text-yellow-600' : 'text-gray-600'
-              }`}>
-                {formatTimeRemaining(timeRemaining)}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className={`h-2 rounded-full transition-all duration-1000 ${
-                  timeRemaining <= 10 ? 'bg-red-500' : 
-                  timeRemaining <= 20 ? 'bg-yellow-500' : 'bg-indigo-500'
-                }`}
-                style={{ width: `${(timeRemaining / questionTimeLimit) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-          
-          <div className="max-w-md mx-auto">
-            {/* Options */}
-            <div className="space-y-4">
-              {currentQuestion.options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedAnswer(String.fromCharCode(65 + index))}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
-                    selectedAnswer === String.fromCharCode(65 + index)
-                      ? 'bg-indigo-100 border-indigo-600 text-indigo-800 font-semibold'
-                      : 'bg-gray-50 border-gray-300 hover:bg-gray-100'
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-end mt-8 space-x-4">
-          <button
-            onClick={handleNextQuestion}
-            className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-full shadow-md hover:bg-indigo-700 transition-colors"
-            disabled={!selectedAnswer}
-          >
-            {currentQuestionIndex < quiz.questions.length - 1 ? 'Next Question' : 'Finish Quiz'}
-          </button>
-        </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );

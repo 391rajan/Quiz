@@ -2,7 +2,7 @@
 const Quiz = require('../models/Quiz');
 const QuizAttempt = require('../models/QuizAttempt');
 const User = require('../models/User');
-const { generateQuizQuestions } = require('../utils/aiService');
+const { generateQuizQuestions, AIError } = require('../utils/aiService');
 const asyncHandler = require('express-async-handler');
 
 // @desc    Generate a new quiz using AI
@@ -25,21 +25,36 @@ const generateQuiz = asyncHandler(async (req, res) => {
     throw new Error('Number of questions must be a positive integer.');
   }
 
-  const questions = await generateQuizQuestions(topic, difficulty, questionCount);
+  try {
+    const questions = await generateQuizQuestions(topic, difficulty, questionCount);
 
-  if (!questions || questions.length === 0) {
-    res.status(500);
-    throw new Error('Failed to generate questions from AI.');
+    if (!questions || questions.length === 0) {
+      // This case might be redundant if generateQuizQuestions always throws an error on failure,
+      // but it's good practice to keep it as a fallback.
+      res.status(500);
+      throw new Error('Failed to generate questions: AI returned no questions.');
+    }
+
+    const newQuiz = await Quiz.create({
+      topic,
+      difficulty,
+      questions,
+      createdBy: userId,
+    });
+
+    res.status(201).json(newQuiz);
+  } catch (error) {
+    if (error instanceof AIError) {
+      // If it's a specific AI-related error, send a detailed response
+      res.status(error.statusCode || 500).json({
+        message: error.message,
+        details: error.details,
+      });
+    } else {
+      // For any other errors, let the generic asyncHandler and error handler middleware deal with it
+      throw error;
+    }
   }
-
-  const newQuiz = await Quiz.create({
-    topic,
-    difficulty,
-    questions,
-    createdBy: userId,
-  });
-
-  res.status(201).json(newQuiz);
 });
 
 // @desc    Get a quiz by ID
@@ -80,7 +95,7 @@ const submitQuiz = asyncHandler(async (req, res) => {
   userAnswers.forEach(userAnswer => {
     const question = quiz.questions.id(userAnswer.questionId);
     if (question) {
-      const isCorrect = question.correctAnswer === userAnswer.userAnswer;
+      const isCorrect = question.correctAnswer.trim() === userAnswer.userAnswer.trim();
       if (isCorrect) {
         score++;
       }
