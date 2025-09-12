@@ -17,7 +17,15 @@ const userSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function() {
+        // Password is required if it's a new user without a googleId
+        return !this.googleId && this.isNew;
+      }
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true // Allows multiple documents to have a null value for this field
     },
     // This array stores references to QuizAttempt documents
     quizHistory: [
@@ -34,8 +42,10 @@ const userSchema = mongoose.Schema(
 
 // Pre-save hook for password hashing (already implemented)
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+  // Only hash the password if it has been modified (or is new) and is not empty
+  if (!this.isModified('password') || !this.password) {
     next();
+    return;
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -43,6 +53,7 @@ userSchema.pre('save', async function (next) {
 
 // Method to compare passwords (already implemented)
 userSchema.methods.matchPassword = async function (enteredPassword) {
+  if (!this.password) return false;
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

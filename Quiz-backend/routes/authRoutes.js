@@ -1,12 +1,10 @@
-// File: backend/routes/authRoutes.js
-
 const express = require('express');
-const { registerUser, loginUser, getProfile } = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
+const { googleLogin, registerUser, authUser } = require('../controllers/authController');
+
 const router = express.Router();
 
 router.post('/register', registerUser);
-router.post('/login', loginUser);
-router.get('/profile', protect, getProfile);
+router.post('/login', authUser);
+router.post('/google', googleLogin);
 
 module.exports = router;

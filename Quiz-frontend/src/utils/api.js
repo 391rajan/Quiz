@@ -35,7 +35,8 @@ const apiCall = async (endpoint, options = {}) => {
         // Try to parse the error response body as JSON
         errorData = await response.json();
         errorMessage = errorData.message;
-      } catch (e) {
+      // eslint-disable-next-line no-unused-vars
+      } catch (_e) { 
         // If parsing fails, use the raw response text
         errorMessage = await responseClone.text();
       }
@@ -115,4 +116,8 @@ export const authAPI = {
   }),
   
   getProfile: () => apiCall('/auth/profile'),
+  googleLogin: (tokenData) => apiCall('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify(tokenData),
+  }),
 };

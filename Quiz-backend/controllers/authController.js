@@ -1,15 +1,68 @@
-// File: backend/controllers/authController.js
-
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
+const { OAuth2Client } = require('google-auth-library');
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const generateToken = require('../utils/generateToken'); // Assuming you have this utility
 
-// A helper function to generate a JSON Web Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '24h',
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// @desc    Auth user with Google
+// @route   POST /api/auth/google
+// @access  Public
+const googleLogin = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    res.status(400);
+    throw new Error('Google token is required');
+  }
+
+  const ticket = await client.verifyIdToken({
+    idToken: token,
+    audience: process.env.GOOGLE_CLIENT_ID,
   });
-};
+
+  const payload = ticket.getPayload();
+  const { sub: googleId, email, name, picture } = payload;
+
+  let user = await User.findOne({ email });
+
+  if (user) {
+    // User exists, check if they signed up with Google before
+    if (!user.googleId) {
+      // If not, link their account
+      user.googleId = googleId;
+      await user.save();
+    }
+  } else {
+    // User does not exist, create a new user
+    // We can use the email prefix as a username, ensuring it's unique
+    let username = name.replace(/\s/g, '').toLowerCase();
+    const userExists = await User.findOne({ username });
+    if (userExists) {
+      username = `${username}${Date.now()}`; // Append timestamp to ensure uniqueness
+    }
+
+    user = await User.create({
+      googleId,
+      email,
+      username,
+      // Password is not needed for Google sign-in
+    });
+  }
+
+  if (user) {
+    res.json({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      token: generateToken(user._id), // Your app's JWT
+    });
+  } else {
+    res.status(400);
+    throw new Error('Invalid user data');
+  }
+});
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -17,62 +70,40 @@ const generateToken = (id) => {
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
-  // Check if the user already exists by email or username
-  const userExistsByEmail = await User.findOne({ email });
-  if (userExistsByEmail) {
+  const userExists = await User.findOne({ email });
+
+  if (userExists) {
     res.status(400);
-    throw new Error('A user with this email already exists.');
+    throw new Error('User already exists');
   }
 
-  const userExistsByUsername = await User.findOne({ username });
-  if (userExistsByUsername) {
-    res.status(400);
-    throw new Error('This username is already taken. Please choose another one.');
-  }
+  const user = await User.create({
+    username,
+    email,
+    password,
+  });
 
-  try {
-    // Create a new user
-    const user = await User.create({
-      username,
-      email,
-      password,
+  if (user) {
+    res.status(201).json({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      token: generateToken(user._id),
     });
-
-    if (user) {
-      res.status(201).json({
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        token: generateToken(user._id),
-      });
-    } else {
-      res.status(400);
-      throw new Error('Invalid user data');
-    }
-  } catch (error) {
-    // Handle potential race conditions or other database errors
-    if (error.code === 11000) {
-      res.status(400);
-      if (error.keyPattern.username) {
-        throw new Error('This username is already taken.');
-      } else if (error.keyPattern.email) {
-        throw new Error('This email is already registered.');
-      }
-    }
-    throw error; // Rethrow other errors
+  } else {
+    res.status(400);
+    throw new Error('Invalid user data');
   }
 });
 
-// @desc    Authenticate a user & get a token
+// @desc    Auth user & get token
 // @route   POST /api/auth/login
 // @access  Public
-const loginUser = asyncHandler(async (req, res) => {
+const authUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // Find user by email
   const user = await User.findOne({ email });
 
-  // Check if user exists and password is correct
   if (user && (await user.matchPassword(password))) {
     res.json({
       _id: user._id,
@@ -86,18 +117,5 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get user profile
-// @route   GET /api/auth/profile
-// @access  Private
-const getProfile = asyncHandler(async (req, res) => {
-  // The 'protect' middleware adds the user object to the request
-  const user = await User.findById(req.user._id).select('-password');
-  if (!user) {
-    res.status(404);
-    throw new Error('User not found');
-  }
-  res.json({ username: user.username });
-});
 
-// Export all the functions at once
-module.exports = { registerUser, loginUser, getProfile };
+module.exports = { googleLogin, registerUser, authUser };

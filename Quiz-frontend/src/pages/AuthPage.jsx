@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authAPI, APIError } from '../utils/api';
 import AuthLayout from '../AuthLayout';
 import { useAuth } from '../context/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 // A reusable input component for cleaner code
 const InputField = ({ id, type, placeholder, value, onChange, label, icon, error }) => (
@@ -66,7 +67,7 @@ const AuthPage = () => {
       setSignupUsernameError('');
     }
 
-    const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+    const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
     if (signupEmail.length > 0 && !emailRegex.test(signupEmail)) {
       setSignupEmailError('Please enter a valid email address.');
     } else {
@@ -128,6 +129,28 @@ const AuthPage = () => {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await authAPI.googleLogin({ token: credentialResponse.credential });
+      login({ username: data.username, token: data.token });
+      navigate('/quizzes');
+    } catch (err) {
+      if (err instanceof APIError) {
+        setError(err.message || 'Google login failed. Please try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Google login failed. Please try again.');
+  };
+
   const isSignupButtonDisabled = loading || !signupUsername || !signupEmail || !signupPassword || !!signupUsernameError || !!signupEmailError || !!signupPasswordError;
 
   return (
@@ -164,16 +187,12 @@ const AuthPage = () => {
       </p>
 
       {/* Social Sign-in Buttons */}
-      <div className="flex justify-center space-x-4 mt-6">
-        <button className="flex items-center justify-center w-1/3 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-          <span className="text-lg">⚛️</span> GitHub
-        </button>
-        <button className="flex items-center justify-center w-1/3 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-          <span className="text-lg">🇬</span> Google
-        </button>
-        <button className="flex items-center justify-center w-1/3 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-          <span className="text-lg">📘</span> Facebook
-        </button>
+      <div className="flex justify-center mt-6">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+          useOneTap
+        />
       </div>
 
       <div className="relative flex items-center py-5">
