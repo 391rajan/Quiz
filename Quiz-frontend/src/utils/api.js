@@ -120,4 +120,37 @@ export const authAPI = {
     method: 'POST',
     body: JSON.stringify(tokenData),
   }),
+  updateProfile: (userData) => apiCall('/auth/profile', {
+    method: 'PUT',
+    body: JSON.stringify(userData),
+  }),
+  forgotPassword: (email) => apiCall('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  }),
+  resetPassword: (data) => apiCall('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
+// Admin API functions
+export const adminAPI = {
+  getAllUsers: () => apiCall('/admin/users'),
+  getAllQuizzes: () => apiCall('/admin/quizzes'),
+  promoteToAdmin: (userId) => apiCall(`/admin/users/${userId}/promote`, {
+    method: 'PUT',
+  }),
+  deleteQuiz: (quizId) => apiCall(`/admin/quizzes/${quizId}`, {
+    method: 'DELETE',
+  }),
+};
+
+// Payment API functions
+export const paymentAPI = {
+  dummyPayment: (planData) => apiCall('/payments/dummy-payment', {
+    method: 'POST',
+    body: JSON.stringify(planData),
+  }),
+  getSubscriptionStatus: () => apiCall('/payments/subscription-status'),
 };

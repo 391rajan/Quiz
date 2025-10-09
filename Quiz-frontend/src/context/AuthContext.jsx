@@ -3,7 +3,7 @@ import React, { createContext, useState, useEffect, useContext, useMemo } from '
 import axios from 'axios';
 
 // 1. Create the context
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 // 2. Create the context provider component
 export function AuthProvider({ children }) {
@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
   // Function to handle login
   const login = (userData) => {
     localStorage.setItem('token', userData.token);
-    setUser({ username: userData.username }); // Store a simple user object
+    setUser(userData);
   };
 
   // Function to handle logout

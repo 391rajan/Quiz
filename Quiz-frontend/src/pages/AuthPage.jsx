@@ -91,6 +91,7 @@ const AuthPage = () => {
       login({ username: data.username, token: data.token });
       navigate('/quizzes'); 
     } catch (err) {
+      console.error(err);
       if (err instanceof APIError) {
         setError(err.message || 'Login failed. Please check your credentials.');
       } else {
@@ -225,7 +226,7 @@ const AuthPage = () => {
               <label htmlFor="login-password" className="sr-only">
                 Password
               </label>
-              <Link to="#" className="text-sm text-indigo-600 hover:underline">
+              <Link to="/forgot-password" className="text-sm text-indigo-600 hover:underline">
                 Forgot your password?
               </Link>
             </div>

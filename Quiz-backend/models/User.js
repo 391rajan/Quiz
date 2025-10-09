@@ -1,5 +1,6 @@
 // File: backend/models/User.js
 
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -27,6 +28,11 @@ const userSchema = mongoose.Schema(
       unique: true,
       sparse: true // Allows multiple documents to have a null value for this field
     },
+    isAdmin: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
     // This array stores references to QuizAttempt documents
     quizHistory: [
       {
@@ -34,6 +40,12 @@ const userSchema = mongoose.Schema(
         ref: 'QuizAttempt', // Refers to the QuizAttempt model
       },
     ],
+    subscription: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subscription',
+    },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   {
     timestamps: true,
@@ -55,6 +67,22 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.matchPassword = async function (enteredPassword) {
   if (!this.password) return false;
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+userSchema.methods.getResetPasswordToken = function () {
+  // Generate token
+  const resetToken = crypto.randomBytes(20).toString('hex');
+
+  // Hash token and set to resetPasswordToken field
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  // Set expire
+  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
 };
 
 const User = mongoose.model('User', userSchema);

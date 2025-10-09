@@ -258,4 +258,121 @@ const getAllQuizzes = asyncHandler(async (req, res) => {
   res.status(200).json(quizzes);
 });
 
-module.exports = { getQuizResults, getUserAnalytics, getAllQuizzes };
+// @desc    Get user activity logs
+// @route   GET /api/analytics/activity
+// @access  Private
+const getUserActivity = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const activities = await UserActivity.find({ userId })
+    .sort({ createdAt: -1 })
+    .limit(50);
+  
+  res.json(activities);
+});
+
+// @desc    Get quiz progress
+// @route   GET /api/analytics/progress/:quizId
+// @access  Private
+const getQuizProgress = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { quizId } = req.params;
+
+  const progress = await QuizProgress.findOne({
+    userId,
+    quizId,
+    status: 'in-progress'
+  });
+
+  if (!progress) {
+    return res.status(404).json({ message: 'No progress found for this quiz' });
+  }
+
+  res.json(progress);
+});
+
+// @desc    Save quiz progress
+// @route   POST /api/analytics/progress/:quizId
+// @access  Private
+const saveQuizProgress = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { quizId } = req.params;
+  const { currentQuestionIndex, answers, timeSpent } = req.body;
+
+  let progress = await QuizProgress.findOne({
+    userId,
+    quizId,
+    status: 'in-progress'
+  });
+
+  if (!progress) {
+    progress = new QuizProgress({
+      userId,
+      quizId,
+      currentQuestionIndex,
+      answers,
+      timeSpent,
+    });
+  } else {
+    progress.currentQuestionIndex = currentQuestionIndex;
+    progress.answers = answers;
+    progress.timeSpent = timeSpent;
+    progress.lastUpdated = new Date();
+  }
+
+  await progress.save();
+  res.json(progress);
+});
+
+// @desc    Get dashboard statistics
+// @route   GET /api/analytics/dashboard
+// @access  Private
+const getDashboardStats = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  // Get quiz attempts stats
+  const attempts = await QuizAttempt.find({ userId });
+  const totalAttempts = attempts.length;
+  const totalScore = attempts.reduce((sum, attempt) => sum + attempt.score, 0);
+  const totalQuestions = attempts.reduce((sum, attempt) => sum + attempt.totalQuestions, 0);
+  const averageScore = totalQuestions > 0 ? (totalScore / totalQuestions) * 100 : 0;
+
+  // Get recent activity
+  const recentActivity = await UserActivity.find({ userId })
+    .sort({ createdAt: -1 })
+    .limit(10);
+
+  // Get in-progress quizzes
+  const inProgressQuizzes = await QuizProgress.find({
+    userId,
+    status: 'in-progress'
+  }).populate('quizId', 'topic difficulty');
+
+  // Get subscription status
+  const user = await User.findById(userId).select('+subscriptionPlan +subscriptionStatus +subscriptionDate');
+
+  res.json({
+    stats: {
+      totalAttempts,
+      averageScore: averageScore.toFixed(2),
+      completedQuizzes: attempts.length,
+      inProgressQuizzes: inProgressQuizzes.length
+    },
+    subscription: {
+      plan: user.subscriptionPlan || 'free',
+      status: user.subscriptionStatus || 'inactive',
+      expiryDate: user.subscriptionDate
+    },
+    recentActivity,
+    inProgressQuizzes
+  });
+});
+
+module.exports = {
+  getQuizResults,
+  getUserAnalytics,
+  getAllQuizzes,
+  getUserActivity,
+  getQuizProgress,
+  saveQuizProgress,
+  getDashboardStats
+};

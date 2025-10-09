@@ -2,36 +2,30 @@ const mongoose = require('mongoose');
 
 const subscriptionSchema = mongoose.Schema(
   {
-    email: {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: 'User',
+    },
+    plan: {
       type: String,
       required: true,
-      unique: true,
-      trim: true,
-      lowercase: true,
+      enum: ['free', 'pro', 'team'],
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'unsubscribed'],
-      default: 'pending',
+      required: true,
+      enum: ['active', 'inactive', 'cancelled'],
+      default: 'inactive',
     },
-    source: {
-      type: String,
-      enum: ['homepage', 'plans', 'other'],
-      default: 'homepage',
-    },
-    subscribedAt: {
+    startDate: {
       type: Date,
-      default: Date.now,
+    },
+    endDate: {
+      type: Date,
     },
   },
   { timestamps: true }
 );
 
-// Add index for email queries
-subscriptionSchema.index({ email: 1 });
-
 module.exports = mongoose.model('Subscription', subscriptionSchema);
-
-
-
-

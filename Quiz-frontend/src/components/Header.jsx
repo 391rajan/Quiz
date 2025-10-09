@@ -48,6 +48,9 @@ const Header = () => {
         {user && (
           <Link to="/dashboard" className="hover:text-purple-600 transition-colors">Dashboard</Link>
         )}
+        {user && user.isAdmin && (
+          <Link to="/admin" className="hover:text-purple-600 transition-colors">Admin</Link>
+        )}
       </nav>
       <div className="flex items-center space-x-4">
         {user ? (
@@ -69,6 +72,11 @@ const Header = () => {
                 <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                   Dashboard
                 </Link>
+                {user && user.isAdmin && (
+                  <Link to="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    Admin
+                  </Link>
+                )}
                 <div className="border-t border-gray-100 my-1"></div>
                 <button
                   onClick={handleLogout}

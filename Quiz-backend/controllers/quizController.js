@@ -133,4 +133,26 @@ const getAllQuizzes = asyncHandler(async (req, res) => {
   res.json(quizzes);
 });
 
-module.exports = { generateQuiz, getQuizById, submitQuiz, getAllQuizzes };
+// @desc    Update a quiz
+// @route   PUT /api/quizzes/:id
+// @access  Private/Admin
+const updateQuiz = asyncHandler(async (req, res) => {
+  const { topic, difficulty, questions } = req.body;
+  const quiz = await Quiz.findById(req.params.id);
+
+  if (!quiz) {
+    res.status(404);
+    throw new Error('Quiz not found');
+  }
+
+  quiz.topic = topic || quiz.topic;
+  quiz.difficulty = difficulty || quiz.difficulty;
+  if (questions && questions.length > 0) {
+    quiz.questions = questions;
+  }
+
+  const updatedQuiz = await quiz.save();
+  res.json(updatedQuiz);
+});
+
+module.exports = { generateQuiz, getQuizById, submitQuiz, getAllQuizzes, updateQuiz };
