@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import { analyticsAPI } from '../utils/api';
 
 const StatCard = ({ title, value, icon }) => (
   <div className="bg-white p-6 rounded-lg shadow-md">
@@ -72,8 +72,8 @@ const AnalyticsDashboard = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const response = await api.get('/analytics/dashboard');
-        setDashboardData(response.data);
+        const response = await analyticsAPI.getDashboardData();
+        setDashboardData(response);
         setLoading(false);
       } catch (err) {
         setError(err.message);

@@ -101,6 +101,9 @@ export const analyticsAPI = {
   
   // Get user analytics
   getUserAnalytics: () => apiCall('/analytics/me'),
+
+  // Get all data for the main analytics dashboard
+  getDashboardData: () => apiCall('/analytics/dashboard'),
 };
 
 // Auth API functions
